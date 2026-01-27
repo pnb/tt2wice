@@ -64,13 +64,18 @@ if __name__ == "__main__":
             print("Skipping already-completed chunk", i)
             continue
         print("Generating audio for chunk", i, "/", len(chunks) - 1)
-        # Translate the text to Dutch
+        # Translate the text
         prompt = "Translate the following English text fragment to Dutch:\n\n" + chunk
         for temperature in [0.7, 0.5, 0.9, 0.6, 1.0, 1.2] * 2:
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
+                    {
+                        "role": "system",
+                        "content": "You are a translation assistant. You provide "
+                        "translations, and you never include any extra text or "
+                        "explanations, just the translation.",
+                    },
                     {"role": "user", "content": prompt},
                 ],
                 temperature=temperature,
