@@ -66,14 +66,14 @@ if __name__ == "__main__":
         print("Generating audio for chunk", i, "/", len(chunks) - 1)
         # Translate the text to Dutch
         prompt = "Translate the following English text fragment to Dutch:\n\n" + chunk
-        for temperature in [0.7, 0.5, 0.9, 0.6, 1.0, 1.2]:
+        for temperature in [0.7, 0.5, 0.9, 0.6, 1.0, 1.2] * 2:
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.7,
+                temperature=temperature,
             )
             chunk_translated = response.choices[0].message.content.strip()
             if "\n" not in chunk_translated:
