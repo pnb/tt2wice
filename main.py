@@ -1,4 +1,5 @@
 import argparse
+import glob
 import os
 import wave
 
@@ -33,6 +34,28 @@ class OuteTTS:
         return output
 
 
+def concat_audio(output_file: str, lang1: str, lang2: str):
+    # Concat the audio files
+    with wave.open(output_file, "wb") as outfile:
+        lang1_files = sorted(glob.glob(os.path.join("tmp", f"*-{lang1}.wav")))
+        lang2_files = sorted(glob.glob(os.path.join("tmp", f"*-{lang2}.wav")))
+        for i, (lang1_file, lang2_file) in enumerate(zip(lang1_files, lang2_files)):
+            print(lang1_file, lang2_file)
+            assert (
+                os.path.basename(lang1_file).split("-")[0]
+                == os.path.basename(lang2_file).split("-")[0]
+            ), "Audio files do not match between languages"
+            with wave.open(lang1_file, "rb") as infile:
+                if i == 0:
+                    outfile.setparams(infile.getparams())
+                outfile.writeframes(infile.readframes(infile.getnframes()))
+            with wave.open(lang2_file, "rb") as infile:
+                outfile.writeframes(infile.readframes(infile.getnframes()))
+    print("Done!")
+    print("Consider converting to mono MP3 like:")
+    print("\tffmpeg -i book.wav -vn -ac 1 -b:a 192k book.mp3")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Dual-language audiobook generator")
     ap.add_argument("text_file", help="Input text file (book)")
@@ -40,11 +63,21 @@ if __name__ == "__main__":
     ap.add_argument(
         "--pg", action="store_true", help="Input is a Project Gutenberg book"
     )
+    ap.add_argument(
+        "--concat-only",
+        action="store_true",
+        help="Skip the actual TTS part and create an output file from whatever has "
+        "been processed so far (for creating an incomplete audiobook and/or for "
+        "testing)",
+    )
     # TODO: First language, second language args
     args = ap.parse_args()
     if not args.pg:
         print("Only Project Gutenberg books supported for now")
         exit(1)
+    if args.concat_only:
+        concat_audio(args.output_file, "en", "nl")
+        exit()
     with open(args.text_file, "r") as infile:
         text = infile.read()
 
@@ -66,7 +99,7 @@ if __name__ == "__main__":
         print("Generating audio for chunk", i, "/", len(chunks) - 1)
         # Translate the text
         prompt = "Translate the following English text fragment to Dutch:\n\n" + chunk
-        for temperature in [0.7, 0.5, 0.9, 0.6, 1.0, 1.2] * 2:
+        for temperature in [0.3, 0.5, 0.9, 0.6, 1.0, 1.2] * 2:
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
@@ -98,13 +131,4 @@ if __name__ == "__main__":
         audio1.save(audio1_path)
         audio2.save(audio2_path)
 
-    # Concat the audio files
-    with wave.open(args.output_file, "wb") as outfile:
-        for i in tqdm(range(len(chunks)), "Concatenating audio"):
-            with wave.open(os.path.join("tmp", f"{i:08d}-en.wav"), "rb") as infile:
-                if i == 0:
-                    outfile.setparams(infile.getparams())
-                outfile.writeframes(infile.readframes(infile.getnframes()))
-            with wave.open(os.path.join("tmp", f"{i:08d}-nl.wav"), "rb") as infile:
-                outfile.writeframes(infile.readframes(infile.getnframes()))
-    print("Done!")
+    concat_audio(args.output_file, "en", "nl")
