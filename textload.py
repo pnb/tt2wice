@@ -11,7 +11,7 @@ def chunk_para(txt: str, maxchars: int = 100, minchars: int = 10) -> [str]:
         return [txt]
     # Priority ordered regexes to split on, from most to least preferred
     ordered_regexes = [
-        r"[.!?](?=[^.?!])",
+        r"""[.!?]['"]*(?=[^.?!])""",
         r"([;—]+| – | -- |---)",
         r",",
         r"\s+",
@@ -47,6 +47,7 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
             print("Skipping blank paragraph", i + 1)
         else:
             para = re.sub(r"[‘’]", "'", para)
+            para = re.sub(r"[“”]", '"', para)
             para = re.sub(r"(\s*\n\s*|\s\s+)", " ", para)
             chunks.extend(chunk_para(para, maxchars))
     return chunks
@@ -62,6 +63,8 @@ if __name__ == "__main__":
     print(chunk_para("This one is too long with an edge case of a semicolon;", 40))
     print(chunk_para("This one is too long with no punctuation at the end", 40))
     print(chunk_para("Short. A longer one here that should not split.", 40, 1))
+    print(chunk_para('"Zwarte rook!" hoorde hij mensen roepen', 30))  # Group !"
+
     with open("pg36.txt", "r") as infile:
         pgchunks = chunk_project_gutenberg(infile.read(), 100)
     print(len(pgchunks), "PG chunks")
