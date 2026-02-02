@@ -21,8 +21,12 @@ class OuteTTS:
             )
         )
         self.speakers = {}
-        self.speakers["en"] = self.interface.load_default_speaker("EN-FEMALE-1-NEUTRAL")
-        self.speakers["nl"] = self.interface.load_speaker("speaker-beatrix6s.json")
+        self.speakers["en"] = self.interface.load_speaker(
+            os.path.join("speakers", "speaker-annakarenina-en.json")
+        )
+        self.speakers["nl"] = self.interface.load_speaker(
+            os.path.join("speakers", "speaker-annakarenina-nl.json")
+        )
 
     def generate(self, text: str, lang: str):
         output = self.interface.generate(
