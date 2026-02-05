@@ -96,7 +96,7 @@ if __name__ == "__main__":
         audio1_path = os.path.join("tmp", f"{i:08d}-en.wav")
         audio2_path = os.path.join("tmp", f"{i:08d}-nl.wav")
         if os.path.exists(audio1_path) and os.path.exists(audio2_path):
-            print("Skipping already-completed chunk", i)
+            print("Skipping already-completed chunk", i, "/", len(chunks))
             continue
         print("Generating audio for chunk", i, "/", len(chunks) - 1)
         # Translate the text
