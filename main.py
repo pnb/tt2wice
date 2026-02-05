@@ -21,11 +21,9 @@ class OuteTTS:
             )
         )
         self.speakers = {}
-        self.speakers["en"] = self.interface.load_speaker(
-            os.path.join("speakers", "speaker-annakarenina-en.json")
-        )
+        self.speakers["en"] = self.interface.load_default_speaker("EN-FEMALE-1-NEUTRAL")
         self.speakers["nl"] = self.interface.load_speaker(
-            os.path.join("speakers", "speaker-annakarenina-nl.json")
+            os.path.join("speakers", "librivox-schoolmeester-nl.json")
         )
 
     def generate(self, text: str, lang: str):
@@ -91,8 +89,8 @@ if __name__ == "__main__":
     chunks = textload.chunk_project_gutenberg(text, 100)
     print(len(chunks), "chunks")
 
-    openai.api_key = "asdfSLEUTEL"
-    openai.base_url = "http://localhost:8080/v1/"
+    openai.api_key = "some-key"
+    openai.base_url = "http://localhost:8090/v1/"
 
     for i, chunk in enumerate(chunks):
         audio1_path = os.path.join("tmp", f"{i:08d}-en.wav")
