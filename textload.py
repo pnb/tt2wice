@@ -12,7 +12,7 @@ def chunk_para(txt: str, maxchars: int = 100, minchars: int = 10) -> [str]:
     # Priority ordered regexes to split on, from most to least preferred
     ordered_regexes = [
         r"""[.!?]['"]*(?=[^.?!])""",
-        r"([;—]+| – | -- |---)",
+        r"([;—]+| – | -- |---|…)",
         r",",
         r"\s+",
     ]
@@ -48,7 +48,8 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
         else:
             para = re.sub(r"[‘’]", "'", para)
             para = re.sub(r"[“”]", '"', para)
-            para = re.sub(r"(\s*\n\s*|\s\s+)", " ", para)
+            para = re.sub(r"(\s*\n\s*|\s\s+)", " ", para)  # Turn single \n into spaces
+            para = re.sub(r"—+", " – ", para)  # Replace em dash(es) (can confuse TTS)
             chunks.extend(chunk_para(para, maxchars))
     return chunks
 
