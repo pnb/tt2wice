@@ -4,6 +4,8 @@ This project creates two-language audio books from text using automatic translat
 
 ## Installation
 
+It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cpp). I haven't tried many translation models yet, but Qwen3-30B-A3B-Instruct-2507 is fast and works well so far.
+
 Requires Python, `outetts` and `openai` packages, and separate installation of FFmpeg for final concatenation and conversion of output WAV files.
 
 ## Usage
@@ -18,6 +20,7 @@ python main.py -h
 
 Roughly in order of priority:
 
+- [ ] Un-hardcode the LLM API URL and key
 - [ ] Figure out what the actual required packages are (I think there were more), including for GPU
 - [ ] Add support for specifying languages instead of hardcoded English/Dutch
 - [ ] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
