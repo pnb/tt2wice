@@ -1,13 +1,12 @@
 import argparse
 import glob
 import os
-import wave
-
-import textload
 
 from tqdm import tqdm
 import outetts
 import openai
+
+import textload
 
 
 class OuteTTS:
@@ -37,8 +36,11 @@ class OuteTTS:
 
 
 def concat_audio(output_file: str, lang1: str, lang2: str):
-    # Concat the audio files
-    with wave.open(output_file, "wb") as outfile:
+    # Concat the audio files, or at least set up FFmpeg for it. Concatenating WAVs alone
+    # does not work because the output can easily exceed 4GB (limit of `wave` std lib).
+    # TODO: auto-extract author and title, and add as metadata via ffmpeg:
+    #   -metadata title="Blah" -metadata artist="Blah"
+    with open("tmp/ffmpeg-list.txt", "w") as ofile:
         lang1_files = sorted(glob.glob(os.path.join("tmp", f"*-{lang1}.wav")))
         lang2_files = sorted(glob.glob(os.path.join("tmp", f"*-{lang2}.wav")))
         for i, (lang1_file, lang2_file) in enumerate(zip(lang1_files, lang2_files)):
@@ -47,15 +49,11 @@ def concat_audio(output_file: str, lang1: str, lang2: str):
                 os.path.basename(lang1_file).split("-")[0]
                 == os.path.basename(lang2_file).split("-")[0]
             ), "Audio files do not match between languages"
-            with wave.open(lang1_file, "rb") as infile:
-                if i == 0:
-                    outfile.setparams(infile.getparams())
-                outfile.writeframes(infile.readframes(infile.getnframes()))
-            with wave.open(lang2_file, "rb") as infile:
-                outfile.writeframes(infile.readframes(infile.getnframes()))
-    print("Done!")
+            ofile.write("file '" + os.path.basename(lang1_file) + "'\n")
+            ofile.write("file '" + os.path.basename(lang2_file) + "'\n")
+    print("Wrote file list to tmp/ffmpeg-list.txt")
     print("Consider converting to mono MP3 like:")
-    print("\tffmpeg -i book.wav -vn -ac 1 -b:a 192k book.mp3")
+    print("\tffmpeg -f concat -i tmp/ffmpeg-list.txt -ac 1 -b:a 192k book.mp3")
 
 
 if __name__ == "__main__":
