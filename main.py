@@ -61,6 +61,12 @@ if __name__ == "__main__":
     ap.add_argument("text_file", help="Input text file (book)")
     ap.add_argument("output_file", help="Output audio file")
     ap.add_argument(
+        "--api-url-translation",
+        help="Translation LLM URL (OpenAI-compatible; default http://localhost:8080)",
+        default="http://localhost:8080",
+    )
+    ap.add_argument("--api-key-translation", help="API key for translation LLM")
+    ap.add_argument(
         "--pg", action="store_true", help="Input is a Project Gutenberg book"
     )
     ap.add_argument(
@@ -87,8 +93,8 @@ if __name__ == "__main__":
     chunks = textload.chunk_project_gutenberg(text, 100)
     print(len(chunks), "chunks")
 
-    openai.api_key = "some-key"
-    openai.base_url = "http://localhost:8090/v1/"
+    openai.api_key = args.api_key_translation if args.api_key_translation else "NONE"
+    openai.base_url = args.api_url_translation.rstrip("/") + "/v1/"
 
     for i, chunk in enumerate(chunks):
         audio1_path = os.path.join("tmp", f"{i:08d}-en.wav")

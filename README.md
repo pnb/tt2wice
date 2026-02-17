@@ -20,7 +20,7 @@ python main.py -h
 
 Roughly in order of priority:
 
-- [ ] Un-hardcode the LLM API URL and key
+- [✓] Un-hardcode the LLM API URL and key
 - [ ] Figure out what the actual required packages are (I think there were more), including for GPU
 - [ ] Add support for specifying languages instead of hardcoded English/Dutch
 - [ ] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
