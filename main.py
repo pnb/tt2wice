@@ -1,4 +1,5 @@
 import argparse
+import csv
 import glob
 import json
 import os
@@ -135,6 +136,16 @@ if __name__ == "__main__":
 
     os.makedirs(args.out_dir, exist_ok=True)
 
+    # Load the processing tracking file if it exists
+    tracking_info = []
+    try:
+        with open(os.path.join(args.out_dir, "processed.csv")) as infile:
+            reader = csv.DictReader(infile)
+            for row in reader:
+                tracking_info.append(row)
+    except FileNotFoundError:
+        pass  # Expected, no tracking file yet
+
     for i, chunk in enumerate(chunks):
         audio1_path = os.path.join(args.out_dir, f"{i:08d}-lang1.wav")
         audio2_path = os.path.join(args.out_dir, f"{i:08d}-lang2.wav")
@@ -182,5 +193,28 @@ if __name__ == "__main__":
             audio2 = tts.generate(chunk, True)
         audio1.save(audio1_path)
         audio2.save(audio2_path)
+
+        # Keep track of some stats so we can figure out where things go wrong, such as
+        # bad translations or audio generation failures
+        tracking_info.append(
+            {
+                "chunk": i,
+                "audio1": audio1_path,
+                "audio1": audio2_path,
+                "audio1_filesize": os.path.getsize(audio1_path),
+                "audio2_filesize": os.path.getsize(audio2_path),
+                "text_lang": text_lang,
+                "trans_lang": trans_lang,
+                "speaker1_lang": speaker1_lang,
+                "speaker2_lang": speaker2_lang,
+                "text": chunk,
+                "translation": chunk_translated,
+            }
+        )
+        with open(os.path.join(args.out_dir, "processed.csv"), "a") as ofile:
+            writer = csv.DictWriter(ofile, fieldnames=tracking_info[0].keys())
+            if len(tracking_info) == 1:  # First time
+                writer.writeheader()
+            writer.writerow(tracking_info[-1])
 
     concat_audio()
