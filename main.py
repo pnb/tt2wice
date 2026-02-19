@@ -1,5 +1,6 @@
 import argparse
 import glob
+import json
 import os
 
 from tqdm import tqdm
@@ -10,7 +11,7 @@ import textload
 
 
 class OuteTTS:
-    def __init__(self):
+    def __init__(self, lang1_speaker_file: str, lang2_speaker_file: str):
         # Initialize the interface
         self.interface = outetts.Interface(
             config=outetts.ModelConfig.auto_config(
@@ -19,30 +20,28 @@ class OuteTTS:
                 quantization=outetts.LlamaCppQuantization.FP16,
             )
         )
-        self.speakers = {}
-        self.speakers["en"] = self.interface.load_default_speaker("EN-FEMALE-1-NEUTRAL")
-        self.speakers["nl"] = self.interface.load_speaker(
-            os.path.join("speakers", "librivox-schoolmeester-nl.json")
-        )
+        self.speaker1 = self.interface.load_speaker(lang1_speaker_file)
+        self.speaker2 = self.interface.load_speaker(lang2_speaker_file)
 
-    def generate(self, text: str, lang: str):
+    def generate(self, text: str, use_lang2: bool):
         output = self.interface.generate(
             config=outetts.GenerationConfig(
                 text=text,
-                speaker=self.speakers[lang],
+                speaker=self.speaker2 if use_lang2 else self.speaker1,
             )
         )
         return output
 
 
-def concat_audio(output_file: str, lang1: str, lang2: str):
+def concat_audio(audio_dir: str):
     # Concat the audio files, or at least set up FFmpeg for it. Concatenating WAVs alone
     # does not work because the output can easily exceed 4GB (limit of `wave` std lib).
     # TODO: auto-extract author and title, and add as metadata via ffmpeg:
     #   -metadata title="Blah" -metadata artist="Blah"
-    with open("tmp/ffmpeg-list.txt", "w") as ofile:
-        lang1_files = sorted(glob.glob(os.path.join("tmp", f"*-{lang1}.wav")))
-        lang2_files = sorted(glob.glob(os.path.join("tmp", f"*-{lang2}.wav")))
+    out_fname = os.path.join(audio_dir, "ffmpeg-list.txt")
+    with open(out_fname, "w") as ofile:
+        lang1_files = sorted(glob.glob(os.path.join(audio_dir, "*-lang1.wav")))
+        lang2_files = sorted(glob.glob(os.path.join(audio_dir, "*-lang2.wav")))
         for i, (lang1_file, lang2_file) in enumerate(zip(lang1_files, lang2_files)):
             print(lang1_file, lang2_file)
             assert (
@@ -51,15 +50,37 @@ def concat_audio(output_file: str, lang1: str, lang2: str):
             ), "Audio files do not match between languages"
             ofile.write("file '" + os.path.basename(lang1_file) + "'\n")
             ofile.write("file '" + os.path.basename(lang2_file) + "'\n")
-    print("Wrote file list to tmp/ffmpeg-list.txt")
+    print("Wrote file list to", out_fname)
     print("Consider converting to mono MP3 like:")
-    print("\tffmpeg -f concat -i tmp/ffmpeg-list.txt -ac 1 -b:a 192k book.mp3")
+    print("\tffmpeg -f concat -i", out_fname, "-ac 1 -b:a 192k book.mp3")
+
+
+def detect_language(text: str) -> str:
+    sysprompt = (
+        "You are a language detection assistant. You are given a text fragment and you "
+        "must determine the language of the text. You must respond with the language "
+        "name in English, e.g. 'English', 'Dutch', 'French', etc.\n"
+        "NEVER include any extra text or explanations, just the language name."
+    )
+    response = openai.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "system",
+                "content": sysprompt,
+            },
+            {"role": "user", "content": text},
+        ],
+    )
+    return response.choices[0].message.content.strip()
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Dual-language audiobook generator")
+    ap.add_argument("speaker1_json", help="Speaker JSON file for first language")
+    ap.add_argument("speaker2_json", help="Speaker JSON file for second language")
     ap.add_argument("text_file", help="Input text file (book)")
-    ap.add_argument("output_file", help="Output audio file")
+    ap.add_argument("out_dir", help="Output directory")
     ap.add_argument(
         "--api-url-translation",
         help="Translation LLM URL (OpenAI-compatible; default http://localhost:8080)",
@@ -76,19 +97,18 @@ if __name__ == "__main__":
         "been processed so far (for creating an incomplete audiobook and/or for "
         "testing)",
     )
-    # TODO: First language, second language args
     args = ap.parse_args()
     if not args.pg:
         print("Only Project Gutenberg books supported for now")
         exit(1)
     if args.concat_only:
-        concat_audio(args.output_file, "en", "nl")
+        concat_audio()
         exit()
     with open(args.text_file, "r") as infile:
         text = infile.read()
 
     print("Initializing TTS engine...")
-    tts = OuteTTS()
+    tts = OuteTTS(args.speaker1_json, args.speaker2_json)
     print("Chunking text...")
     chunks = textload.chunk_project_gutenberg(text, 100)
     print(len(chunks), "chunks")
@@ -96,15 +116,37 @@ if __name__ == "__main__":
     openai.api_key = args.api_key_translation if args.api_key_translation else "NONE"
     openai.base_url = args.api_url_translation.rstrip("/") + "/v1/"
 
+    print("Detecting language of text...")
+    text_lang = detect_language(" ".join(chunks[:5]))
+    print("Detected language:", text_lang)
+
+    print("Detecting speaker languages...")
+    with open(args.speaker1_json, "r") as infile:
+        speaker1 = json.load(infile)
+    speaker1_lang = detect_language(speaker1["text"])
+    with open(args.speaker2_json, "r") as infile:
+        speaker2 = json.load(infile)
+    speaker2_lang = detect_language(speaker2["text"])
+    print("Speaker languages:", [speaker1_lang, speaker2_lang])
+    if speaker1_lang != text_lang and speaker2_lang != text_lang:
+        print("Error: Neither speaker JSON file seems to match the text language")
+        exit(1)
+    trans_lang = speaker1_lang if speaker1_lang != text_lang else speaker2_lang
+
+    os.makedirs(args.out_dir, exist_ok=True)
+
     for i, chunk in enumerate(chunks):
-        audio1_path = os.path.join("tmp", f"{i:08d}-en.wav")
-        audio2_path = os.path.join("tmp", f"{i:08d}-nl.wav")
+        audio1_path = os.path.join(args.out_dir, f"{i:08d}-lang1.wav")
+        audio2_path = os.path.join(args.out_dir, f"{i:08d}-lang2.wav")
         if os.path.exists(audio1_path) and os.path.exists(audio2_path):
             print("Skipping already-completed chunk", i, "/", len(chunks))
             continue
         print("Generating audio for chunk", i, "/", len(chunks) - 1)
         # Translate the text
-        prompt = "Translate the following English text fragment to Dutch:\n\n" + chunk
+        prompt = (
+            f"Translate the following {text_lang} text fragment to {trans_lang}:\n\n"
+            + chunk
+        )
         for temperature in [0.3, 0.5, 0.9, 0.6, 1.0, 1.2] * 2:
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -131,10 +173,14 @@ if __name__ == "__main__":
             exit(1)
         print(chunk)
         print(chunk_translated)
-        # Generate the Dutch audio
-        audio1 = tts.generate(chunk, "en")
-        audio2 = tts.generate(chunk_translated, "nl")
+        # Generate the audio files for both languages
+        if text_lang == speaker1_lang:
+            audio1 = tts.generate(chunk, False)
+            audio2 = tts.generate(chunk_translated, True)
+        else:
+            audio1 = tts.generate(chunk_translated, False)
+            audio2 = tts.generate(chunk, True)
         audio1.save(audio1_path)
         audio2.save(audio2_path)
 
-    concat_audio(args.output_file, "en", "nl")
+    concat_audio()

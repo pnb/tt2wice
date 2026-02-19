@@ -21,9 +21,9 @@ python main.py -h
 Roughly in order of priority:
 
 - [✓] Un-hardcode the LLM API URL and key
-- [ ] Figure out what the actual required packages are (I think there were more), including for GPU
-- [ ] Add support for specifying languages instead of hardcoded English/Dutch
+- [✓] Add support for specifying languages instead of hardcoded English/Dutch
 - [ ] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
+- [ ] Figure out what the actual required packages are (I think there were more), including for GPU
 - [ ] Add title/author metadata to audio files
 - [ ] Add chapter break metadata to output
 - [ ] Translation could probably be improved with a better prompt that incorporates the context of the sentence/fragment
