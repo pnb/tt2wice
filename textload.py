@@ -36,7 +36,8 @@ def chunk_para(txt: str, maxchars: int = 100, minchars: int = 10) -> [str]:
 
 
 def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -> [str]:
-    start_i = txt.index("***\n") + 4
+    start_i = txt.index("*** START OF THE PROJECT GUTENBERG")
+    start_i = txt.index("\n", start_i) + 1
     end_i = txt.rindex("*** END OF THE PROJECT GUTENBERG") - 1
     paragraphs = re.split(r"\n\n+", txt[start_i:end_i])
     chunks = []
