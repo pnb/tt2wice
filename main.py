@@ -3,6 +3,7 @@ import csv
 import glob
 import json
 import os
+import warnings
 
 from tqdm import tqdm
 import outetts
@@ -77,6 +78,10 @@ def detect_language(text: str) -> str:
 
 
 if __name__ == "__main__":
+    # Ignore some TTS warnings that don't seem to matter
+    warnings.filterwarnings("ignore", message=".*The.*parameter.*by TorchCodec.*")
+    warnings.filterwarnings("ignore", message=".*Possible clipped samples in output.*")
+
     ap = argparse.ArgumentParser(description="Dual-language audiobook generator")
     ap.add_argument("speaker1_json", help="Speaker JSON file for first language")
     ap.add_argument("speaker2_json", help="Speaker JSON file for second language")
