@@ -22,7 +22,7 @@ Roughly in order of priority:
 
 - [✓] Un-hardcode the LLM API URL and key
 - [✓] Add support for specifying languages instead of hardcoded English/Dutch
-- [ ] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
+- [✓] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
 - [ ] Figure out what the actual required packages are (I think there were more), including for GPU
 - [ ] Add title/author metadata to audio files
 - [ ] Add chapter break metadata to output

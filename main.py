@@ -10,6 +10,7 @@ import outetts
 import openai
 
 import textload
+import statcheck
 
 
 class OuteTTS:
@@ -223,3 +224,4 @@ if __name__ == "__main__":
             writer.writerow(tracking_info[-1])
 
     concat_audio()
+    statcheck.check_processed_csv(os.path.join(args.out_dir, "processed.csv"))
