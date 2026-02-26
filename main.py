@@ -46,11 +46,10 @@ def concat_audio(audio_dir: str):
         lang1_files = sorted(glob.glob(os.path.join(audio_dir, "*-lang1.wav")))
         lang2_files = sorted(glob.glob(os.path.join(audio_dir, "*-lang2.wav")))
         for i, (lang1_file, lang2_file) in enumerate(zip(lang1_files, lang2_files)):
-            print(lang1_file, lang2_file)
             assert (
                 os.path.basename(lang1_file).split("-")[0]
                 == os.path.basename(lang2_file).split("-")[0]
-            ), "Audio files do not match between languages"
+            ), f"Audio files do not match between languages: {lang1_file}, {lang2_file}"
             ofile.write("file '" + os.path.basename(lang1_file) + "'\n")
             ofile.write("file '" + os.path.basename(lang2_file) + "'\n")
     print("Wrote file list to", out_fname)
@@ -109,7 +108,7 @@ if __name__ == "__main__":
         print("Only Project Gutenberg books supported for now")
         exit(1)
     if args.concat_only:
-        concat_audio()
+        concat_audio(args.out_dir)
         exit()
     with open(args.text_file, "r") as infile:
         text = infile.read()
@@ -223,5 +222,5 @@ if __name__ == "__main__":
                 writer.writeheader()
             writer.writerow(tracking_info[-1])
 
-    concat_audio()
     statcheck.check_processed_csv(os.path.join(args.out_dir, "processed.csv"))
+    concat_audio(args.out_dir)
