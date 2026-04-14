@@ -41,9 +41,15 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
     end_i = txt.rindex("*** END OF THE PROJECT GUTENBERG") - 1
     paragraphs = re.split(r"\n\n+", txt[start_i:end_i])
     chunks = []
+    in_contents = False
     for i, para in enumerate(paragraphs):
-        if i < 20 and (para.strip() in ["cover", "Contents"] or para == para.upper()):
-            print("Skipping metadata paragraph", i + 1)
+        if i < 20 and para.strip() == "Contents":
+            in_contents = True
+        if i < 20 and (
+            para.strip() in ["cover", "Contents"]
+            or (in_contents and re.match(r"\s*[IVXLC]+\. .*", para))
+        ):
+            print("Skipping metadata paragraph", i + 1, para)
         elif len(para.strip()) == 0:
             print("Skipping blank paragraph", i + 1)
         else:
