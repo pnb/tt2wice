@@ -143,8 +143,9 @@ if __name__ == "__main__":
 
     # Load the processing tracking file if it exists
     tracking_info = []
+    tracking_info_fname = os.path.join(args.out_dir, "processed.csv")
     try:
-        with open(os.path.join(args.out_dir, "processed.csv")) as infile:
+        with open(tracking_info_fname) as infile:
             reader = csv.DictReader(infile)
             for row in reader:
                 tracking_info.append(row)
@@ -157,6 +158,15 @@ if __name__ == "__main__":
         if os.path.exists(audio1_path) and os.path.exists(audio2_path):
             print("Skipping already-completed chunk", i, "/", len(chunks))
             continue
+        elif i <= len(tracking_info):  # Maybe file was deleted for regen
+            for j, ti in enumerate(tracking_info):
+                if int(ti["chunk"]) == i:
+                    print("Removing tracking info row for chunk", i, "(file gone)")
+                    # Remove tracking info file to trigger full rewrite of file
+                    os.remove(tracking_info_fname)
+                    del tracking_info[j]
+                    break
+
         print("Generating audio for chunk", i, "/", len(chunks) - 1)
         # Translate the text
         prompt = (
@@ -216,11 +226,17 @@ if __name__ == "__main__":
                 "translation": chunk_translated,
             }
         )
-        with open(os.path.join(args.out_dir, "processed.csv"), "a") as ofile:
-            writer = csv.DictWriter(ofile, fieldnames=tracking_info[0].keys())
-            if len(tracking_info) == 1:  # First time
+        if not os.path.exists(tracking_info_fname):
+            # First row OR the whole thing was deleted to trigger full rewrite of file
+            with open(tracking_info_fname, "w") as ofile:
+                writer = csv.DictWriter(ofile, fieldnames=tracking_info[0].keys())
                 writer.writeheader()
-            writer.writerow(tracking_info[-1])
+                for row in tracking_info:
+                    writer.writerow(row)
+        else:
+            with open(tracking_info_fname, "a") as ofile:
+                writer = csv.DictWriter(ofile, fieldnames=tracking_info[0].keys())
+                writer.writerow(tracking_info[-1])
 
     statcheck.check_processed_csv(os.path.join(args.out_dir, "processed.csv"))
     concat_audio(args.out_dir)
