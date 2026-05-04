@@ -6,7 +6,7 @@ This project creates two-language audio books from text using automatic translat
 
 It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cpp). I haven't tried many translation models yet, but Qwen3-30B-A3B-Instruct-2507 is fast and works well so far.
 
-Requires Python, `outetts` and `openai` packages, and separate installation of FFmpeg for final concatenation and conversion of output WAV files.
+Requires Python, `outetts`, `openai`, and `pandas` packages, and separate installation of FFmpeg for final concatenation and conversion of output WAV files.
 
 ## Usage
 
