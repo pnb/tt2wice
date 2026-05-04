@@ -47,7 +47,7 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
             in_contents = True
         if i < 20 and (
             para.strip() in ["cover", "Contents"]
-            or (in_contents and re.match(r"\s*[IVXLC]+\. .*", para))
+            or (in_contents and re.match(r"\s*(CHAPTER)?\s*[IVXLC]+\. .*", para))
         ):
             print("Skipping metadata paragraph", i + 1, para)
         elif re.search("^\s*\[\w+\]\s*$", para):  # [Illustration] or similar
