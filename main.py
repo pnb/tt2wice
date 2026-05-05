@@ -17,10 +17,10 @@ class OuteTTS:
     def __init__(self, lang1_speaker_file: str, lang2_speaker_file: str):
         # Initialize the interface
         self.interface = outetts.Interface(
-            config=outetts.ModelConfig.auto_config(
-                model=outetts.Models.VERSION_1_0_SIZE_1B,
-                backend=outetts.Backend.LLAMACPP,
-                quantization=outetts.LlamaCppQuantization.FP16,
+            config=outetts.ModelConfig(
+                model_path="./tts_model",
+                tokenizer_path="./tts_model",
+                backend=outetts.Backend.LLAMACPP_SERVER,
             )
         )
         self.speaker1 = self.interface.load_speaker(lang1_speaker_file)
@@ -31,6 +31,8 @@ class OuteTTS:
             config=outetts.GenerationConfig(
                 text=text,
                 speaker=self.speaker2 if use_lang2 else self.speaker1,
+                generation_type=outetts.GenerationType.REGULAR,
+                server_host="http://localhost:8091",
             )
         )
         return output

@@ -4,9 +4,33 @@ This project creates two-language audio books from text using automatic translat
 
 ## Installation
 
-It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cpp). I haven't tried many translation models yet, but Qwen3-30B-A3B-Instruct-2507 is fast and works well so far.
+It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cpp).
 
-Requires Python, `outetts`, `openai`, `torchcodec`, and `pandas` packages, and separate installation of FFmpeg for final concatenation and conversion of output WAV files.
+### llama.cpp setup
+
+You will need two separate llama.cpp servers running, one for the text part (e.g., translation, language identification) and one for the TTS part. There is little need for GPU on the text model; as long as there isn't much "thinking", it should be quite fast compared to the TTS part.
+
+Text LLM example (Gemma 4 models are often good for translation):
+
+```bash
+./llama-server -m google_gemma-4-E4B-it-Q5_K_M.gguf --no-mmap -c 16000 --port 8090
+```
+
+TTS requires, specifically, downloading the [FP16 OuteTTS model](https://huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B-GGUF/tree/main) and save it to the *tts_model* folder in this project. Then download *config.json*, *tokenizer.json*, and *tokenizer_config.json* [from here](https://huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B/tree/main) and also save them to *tts_model*.
+
+Then run the TTS llama.cpp server, ideally with GPU support, something like:
+
+```bash
+./llama-server -m /PATH/TO/tt2wice/tts_model/Llama-OuteTTS-1.0-1B-FP16.gguf -c 8192 --special --metrics --no-context-shift -ngl 999 --port 8091
+```
+
+I wouldn't touch any of the parameters except `ngl` and whatever else you need to do to get it running on your GPU.
+
+Note that no API key can be used for this. OuteTTS doesn't seem to know how to pass it, as far as I can tell.
+
+### Python setup
+
+Requires Python, `outetts`, `openai`, `torchcodec`, and `pandas` packages, and separately (non-Python) installation of FFmpeg (e.g., `dnf install ffmpeg`, `apt install ffmpeg`).
 
 ## Usage
 
@@ -23,7 +47,7 @@ Roughly in order of priority:
 - [✓] Un-hardcode the LLM API URL and key
 - [✓] Add support for specifying languages instead of hardcoded English/Dutch
 - [✓] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
-- [ ] Figure out what the actual required packages are (I think there were more), including for GPU
+- [✓] Figure out what the actual required packages are (I think there were more), including for GPU
 - [ ] Add title/author metadata to audio files
 - [ ] Add chapter break metadata to output
 - [ ] Translation could probably be improved with a better prompt that incorporates the context of the sentence/fragment

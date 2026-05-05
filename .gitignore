@@ -1,3 +1,4 @@
+tts_model/
 *.swp
 __pycache__/
 tmp/*
