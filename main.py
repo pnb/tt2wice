@@ -91,8 +91,8 @@ if __name__ == "__main__":
     ap.add_argument("out_dir", help="Output directory")
     ap.add_argument(
         "--api-url-translation",
-        help="Translation LLM URL (OpenAI-compatible; default http://localhost:8080)",
-        default="http://localhost:8080",
+        help="Translation LLM URL (OpenAI-compatible; default http://localhost:8090)",
+        default="http://localhost:8090",
     )
     ap.add_argument("--api-key-translation", help="API key for translation LLM")
     ap.add_argument(

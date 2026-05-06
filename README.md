@@ -4,7 +4,7 @@ This project creates two-language audio books from text using automatic translat
 
 ## Installation
 
-It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cpp).
+It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cpp). The translation model can actually be any OpenAI endpoint, specified with an optional CLI argument, but the default assumption is a local llama.cpp server running at `http://localhost:8090/v1`.
 
 ### llama.cpp setup
 
@@ -24,7 +24,7 @@ Then run the TTS llama.cpp server, ideally with GPU support, something like:
 ./llama-server -m /PATH/TO/tt2wice/tts_model/Llama-OuteTTS-1.0-1B-FP16.gguf -c 8192 --special --metrics --no-context-shift -ngl 999 --port 8091
 ```
 
-I wouldn't touch any of the parameters except `ngl` and whatever else you need to do to get it running on your GPU.
+I wouldn't touch any of the parameters except `ngl` and whatever else you need to do to get it running on your GPU. The port for this one is hardcoded to 8091 with no API key, because you'll need to use llama.cpp for this one for sure, so just do port 8091.
 
 Note that no API key can be used for this. OuteTTS doesn't seem to know how to pass it, as far as I can tell.
 
