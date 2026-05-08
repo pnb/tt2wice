@@ -216,8 +216,8 @@ if __name__ == "__main__":
         tracking_info.append(
             {
                 "chunk": i,
-                "audio1": audio1_path,
-                "audio1": audio2_path,
+                "audio1_path": audio1_path,
+                "audio2_path": audio2_path,
                 "audio1_filesize": os.path.getsize(audio1_path),
                 "audio2_filesize": os.path.getsize(audio2_path),
                 "text_lang": text_lang,
