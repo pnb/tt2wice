@@ -5,7 +5,6 @@ import json
 import os
 import warnings
 
-from tqdm import tqdm
 import outetts
 import openai
 
