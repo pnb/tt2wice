@@ -32,6 +32,8 @@ Note that no API key can be used for this. OuteTTS doesn't seem to know how to p
 
 Requires Python, `outetts`, `openai`, `torchcodec`, and `pandas` packages, and separately (non-Python) installation of FFmpeg (e.g., `dnf install ffmpeg`, `apt install ffmpeg`).
 
+System packages `python3-devel` and `sdl12-compat-devel` (Fedora names) may be required for `outetts` to successfully install.
+
 ## Usage
 
 See the command-line help:
