@@ -10,10 +10,10 @@ It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cp
 
 You will need two separate llama.cpp servers running, one for the text part (e.g., translation, language identification) and one for the TTS part. There is little need for GPU on the text model; as long as there isn't much "thinking", it should be quite fast compared to the TTS part.
 
-Text LLM example (Gemma 4 models are often good for translation):
+Text LLM example (Gemma 4 models are often good for translation, and reasoning is usually not that helpful):
 
 ```bash
-./llama-server -m google_gemma-4-E4B-it-Q5_K_M.gguf --no-mmap -c 16000 --port 8090
+./llama-server -m google_gemma-4-E4B-it-Q5_K_M.gguf --no-mmap -c 16000 --port 8090 --reasoning off
 ```
 
 TTS requires, specifically, downloading the [FP16 OuteTTS model](https://huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B-GGUF/tree/main) and save it to the *tts_model* folder in this project. Then download *config.json*, *tokenizer.json*, and *tokenizer_config.json* [from here](https://huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B/tree/main) and also save them to *tts_model*.
