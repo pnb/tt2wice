@@ -54,7 +54,15 @@ def concat_audio(audio_dir: str):
             ofile.write("file '" + os.path.basename(lang1_file) + "'\n")
             ofile.write("file '" + os.path.basename(lang2_file) + "'\n")
     print("Wrote file list to", out_fname)
-    print("Consider converting to mono MP3 like:")
+    print("Probably check the statistics about chunk length:")
+    print("\tpython statcheck.py", os.path.join(args.out_dir, "processed.csv"))
+    print("Hopefully the correlations will be close to .85 or higher.")
+    print(
+        "Usually it is also good to do statcheck with --rm-big-ratio and rerun main.py "
+        "to regenerate the problematic chunks. Some will never be fixed, so 1-2 times "
+        "is as good as it will get."
+    )
+    print("Finally, consider converting to mono MP3 like:")
     print("\tffmpeg -f concat -i", out_fname, "-ac 1 -b:a 192k book.mp3")
 
 
