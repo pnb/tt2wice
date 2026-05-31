@@ -62,6 +62,7 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
             para = re.sub(r"(\s*\n\s*|\s\s+)", " ", para)  # Turn single \n into spaces
             para = re.sub(r"—+", " – ", para)  # Replace em dash(es) (can confuse TTS)
             para = re.sub(r" *_ *", " ", para)  # Remove underscores (also confuses TTS)
+            para = para.replace("§", "Section")  # Replace section symbol
             chunks.extend(chunk_para(para, maxchars))
     return chunks
 
