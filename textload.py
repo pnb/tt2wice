@@ -41,19 +41,21 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
     end_i = txt.rindex("*** END OF THE PROJECT GUTENBERG") - 1
     paragraphs = re.split(r"\n\n+", txt[start_i:end_i])
     chunks = []
-    in_contents = False
+    in_text = False
     for i, para in enumerate(paragraphs):
-        if i < 20 and para.strip() == "Contents":
-            in_contents = True
-        if i < 40 and (
-            para.strip() in ["cover", "Contents"]
-            or (in_contents and re.match(r"\s*(CHAPTER)?\s*[IVXLC]+\..*", para))
-        ):
-            print("Skipping metadata paragraph", i + 1, para)
-        elif re.search("^\s*\[\w+\]\s*$", para):  # [Illustration] or similar
-            print("Skipping placeholder paragraph:", para)
-        elif len(para.strip()) == 0:
+        if (
+            not in_text
+            and len(para) > 10
+            and para == para.lstrip()
+            and (sum(1 for x in para if x == x.lower()) / len(para) > 0.9)
+        ):  # Lots of lowercase letters, decent paragraph length -- probably main text
+            in_text = True
+        elif in_text and i < 40 and para == para.upper():
+            in_text = False  # Oops, not actually in main text yet
+        if len(para.strip()) == 0:
             print("Skipping blank paragraph", i + 1)
+        elif not in_text:
+            print("Skipping metadata paragraph:", i + 1, para)
         else:
             para = re.sub(r"[‘’]", "'", para)
             para = re.sub(r"[“”]", '"', para)
