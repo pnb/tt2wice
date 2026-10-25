@@ -1,40 +1,66 @@
 import argparse
 import csv
 import glob
-import json
 import os
-import warnings
 
-import outetts
 import openai
+import supertonic
 
 import textload
 import statcheck
 
+# ISO code -> English name, for the languages Supertonic supports
+LANG_NAMES = {
+    "ar": "Arabic",
+    "bg": "Bulgarian",
+    "hr": "Croatian",
+    "cs": "Czech",
+    "da": "Danish",
+    "nl": "Dutch",
+    "en": "English",
+    "et": "Estonian",
+    "fi": "Finnish",
+    "fr": "French",
+    "de": "German",
+    "el": "Greek",
+    "hi": "Hindi",
+    "hu": "Hungarian",
+    "id": "Indonesian",
+    "it": "Italian",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "lv": "Latvian",
+    "lt": "Lithuanian",
+    "pl": "Polish",
+    "pt": "Portuguese",
+    "ro": "Romanian",
+    "ru": "Russian",
+    "sk": "Slovak",
+    "sl": "Slovenian",
+    "es": "Spanish",
+    "sv": "Swedish",
+    "tr": "Turkish",
+    "uk": "Ukrainian",
+    "vi": "Vietnamese",
+}
 
-class OuteTTS:
-    def __init__(self, lang1_speaker_file: str, lang2_speaker_file: str):
-        # Initialize the interface
-        self.interface = outetts.Interface(
-            config=outetts.ModelConfig(
-                model_path="./tts_model",
-                tokenizer_path="./tts_model",
-                backend=outetts.Backend.LLAMACPP_SERVER,
-            )
-        )
-        self.speaker1 = self.interface.load_speaker(lang1_speaker_file)
-        self.speaker2 = self.interface.load_speaker(lang2_speaker_file)
+VOICES = {f"{group}{i}" for group in "MF" for i in range(1, 6)}
 
-    def generate(self, text: str, use_lang2: bool):
-        output = self.interface.generate(
-            config=outetts.GenerationConfig(
-                text=text,
-                speaker=self.speaker2 if use_lang2 else self.speaker1,
-                generation_type=outetts.GenerationType.REGULAR,
-                server_host="http://localhost:8091",
-            )
+
+class SupertonicTTS:
+    def __init__(self, voice1: str, voice2: str):
+        # First run downloads the model into ~/.cache/supertonic3/
+        self.tts = supertonic.TTS(auto_download=True)
+        self.voice1 = self.tts.get_voice_style(voice_name=voice1)
+        self.voice2 = self.tts.get_voice_style(voice_name=voice2)
+
+    def generate(self, text: str, lang: str, use_voice2: bool, out_path: str):
+        wav, _ = self.tts.synthesize(
+            text=text,
+            voice_style=self.voice2 if use_voice2 else self.voice1,
+            lang=lang,
         )
-        return output
+        self.tts.save_audio(wav, out_path)
 
 
 def concat_audio(audio_dir: str):
@@ -80,22 +106,34 @@ def detect_language(text: str) -> str:
                 "role": "system",
                 "content": sysprompt,
             },
-            {"role": "user", "content": text},
+            {
+                "role": "user",
+                "content": text,
+            },
         ],
     )
     return response.choices[0].message.content.strip()
 
 
 if __name__ == "__main__":
-    # Ignore some TTS warnings that don't seem to matter
-    warnings.filterwarnings("ignore", message=".*The.*parameter.*by TorchCodec.*")
-    warnings.filterwarnings("ignore", message=".*Possible clipped samples in output.*")
-
     ap = argparse.ArgumentParser(description="Dual-language audiobook generator")
-    ap.add_argument("speaker1_json", help="Speaker JSON file for first language")
-    ap.add_argument("speaker2_json", help="Speaker JSON file for second language")
     ap.add_argument("text_file", help="Input text file (book)")
     ap.add_argument("out_dir", help="Output directory")
+    ap.add_argument(
+        "--voice1",
+        default="M5",
+        help="Supertonic voice for the original text, M1-M5 or F1-F5 (default M5)",
+    )
+    ap.add_argument(
+        "--voice2",
+        default="F3",
+        help="Supertonic voice for the translation, M1-M5 or F1-F5 (default F3)",
+    )
+    ap.add_argument(
+        "--trans-lang",
+        default="nl",
+        help="Translation language, ISO code (e.g. nl, es, fr) (default nl)",
+    )
     ap.add_argument(
         "--api-url-translation",
         help="Translation LLM URL (OpenAI-compatible; default http://localhost:8090)",
@@ -116,6 +154,10 @@ if __name__ == "__main__":
     if not args.pg:
         print("Only Project Gutenberg books supported for now")
         exit(1)
+    if args.voice1 not in VOICES or args.voice2 not in VOICES:
+        ap.error(f"Invalid voice, must be one of {sorted(VOICES)}")
+    if args.trans_lang not in LANG_NAMES:
+        ap.error(f"Invalid --trans-lang, must be one of {sorted(LANG_NAMES)}")
     if args.concat_only:
         concat_audio(args.out_dir)
         exit()
@@ -123,7 +165,7 @@ if __name__ == "__main__":
         text = infile.read()
 
     print("Initializing TTS engine...")
-    tts = OuteTTS(args.speaker1_json, args.speaker2_json)
+    tts = SupertonicTTS(args.voice1, args.voice2)
     print("Chunking text...")
     chunks = textload.chunk_project_gutenberg(text, 100)
     print(len(chunks), "chunks")
@@ -134,19 +176,14 @@ if __name__ == "__main__":
     print("Detecting language of text...")
     text_lang = detect_language(" ".join(chunks[:5]))
     print("Detected language:", text_lang)
-
-    print("Detecting speaker languages...")
-    with open(args.speaker1_json, "r") as infile:
-        speaker1 = json.load(infile)
-    speaker1_lang = detect_language(speaker1["text"])
-    with open(args.speaker2_json, "r") as infile:
-        speaker2 = json.load(infile)
-    speaker2_lang = detect_language(speaker2["text"])
-    print("Speaker languages:", [speaker1_lang, speaker2_lang])
-    if speaker1_lang != text_lang and speaker2_lang != text_lang:
-        print("Error: Neither speaker JSON file seems to match the text language")
-        exit(1)
-    trans_lang = speaker1_lang if speaker1_lang != text_lang else speaker2_lang
+    trans_lang_name = LANG_NAMES[args.trans_lang]
+    # Map the detected language name to an ISO code for Supertonic; if the LLM
+    # returns something unexpected, fall back to language-agnostic mode
+    text_lang_code = next(
+        (c for c, n in LANG_NAMES.items() if n.lower() == text_lang.lower()), "na"
+    )
+    if text_lang_code == "na":
+        print("Warning: detected language not supported by Supertonic, using 'na'")
 
     os.makedirs(args.out_dir, exist_ok=True)
 
@@ -179,8 +216,8 @@ if __name__ == "__main__":
         print("Generating audio for chunk", i, "/", len(chunks) - 1)
         # Translate the text
         prompt = (
-            f"Translate the following {text_lang} text fragment to {trans_lang}:\n\n"
-            + chunk
+            f"Translate the following {text_lang} text fragment to "
+            f"{trans_lang_name}:\n\n" + chunk
         )
         for temperature in [0.3, 0.5, 0.9, 0.6, 1.0, 1.2] * 2:
             response = openai.chat.completions.create(
@@ -192,7 +229,10 @@ if __name__ == "__main__":
                         "translations, and you never include any extra text or "
                         "explanations, just the translation.",
                     },
-                    {"role": "user", "content": prompt},
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
                 ],
                 temperature=temperature,
             )
@@ -208,15 +248,9 @@ if __name__ == "__main__":
             exit(1)
         print(chunk)
         print(chunk_translated)
-        # Generate the audio files for both languages
-        if text_lang == speaker1_lang:
-            audio1 = tts.generate(chunk, False)
-            audio2 = tts.generate(chunk_translated, True)
-        else:
-            audio1 = tts.generate(chunk_translated, False)
-            audio2 = tts.generate(chunk, True)
-        audio1.save(audio1_path)
-        audio2.save(audio2_path)
+        # Generate the audio files: lang1 is the original text, lang2 the translation
+        tts.generate(chunk, text_lang_code, False, audio1_path)
+        tts.generate(chunk_translated, args.trans_lang, True, audio2_path)
 
         # Keep track of some stats so we can figure out where things go wrong, such as
         # bad translations or audio generation failures
@@ -228,9 +262,7 @@ if __name__ == "__main__":
                 "audio1_filesize": os.path.getsize(audio1_path),
                 "audio2_filesize": os.path.getsize(audio2_path),
                 "text_lang": text_lang,
-                "trans_lang": trans_lang,
-                "speaker1_lang": speaker1_lang,
-                "speaker2_lang": speaker2_lang,
+                "trans_lang": trans_lang_name,
                 "text": chunk,
                 "translation": chunk_translated,
             }

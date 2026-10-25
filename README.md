@@ -4,35 +4,25 @@ This project creates two-language audio books from text using automatic translat
 
 ## Installation
 
+### Translation LLM
+
 It is all intended to work with [llama.cpp](https://github.com/ggml-org/llama.cpp). The translation model can actually be any OpenAI endpoint, specified with an optional CLI argument, but the default assumption is a local llama.cpp server running at `http://localhost:8090/v1`.
 
-### llama.cpp setup
-
-You will need two separate llama.cpp servers running, one for the text part (e.g., translation, language identification) and one for the TTS part. There is little need for GPU on the text model; as long as there isn't much "thinking", it should be quite fast compared to the TTS part.
-
-Text LLM example (Gemma 4 models are often good for translation, and reasoning is usually not that helpful):
+Example:
 
 ```bash
-./llama-server -m google_gemma-4-E4B-it-Q5_K_M.gguf --no-mmap -c 16000 --port 8090 --reasoning off
+./llama-server -m google_gemma-4-E4B-it-Q5_K_M.gguf --load-mode none -c 16000 --port 8090 --reasoning off
 ```
 
-TTS requires, specifically, downloading the [FP16 OuteTTS model](https://huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B-GGUF/tree/main) and save it to the *tts_model* folder in this project. Then download *config.json*, *tokenizer.json*, and *tokenizer_config.json* [from here](https://huggingface.co/OuteAI/Llama-OuteTTS-1.0-1B/tree/main) and also save them to *tts_model*.
+### TTS (Supertonic)
 
-Then run the TTS llama.cpp server, ideally with GPU support, something like:
+TTS is done with [Supertonic](https://github.com/supertone-oss-archive/supertonic), a fast, fully local, multilingual (31 languages) TTS system. It runs on CPU fast enough. On first run, the TTS model is downloaded automatically from HuggingFace into `~/.cache/supertonic3/`.
 
-```bash
-./llama-server -m /PATH/TO/tt2wice/tts_model/Llama-OuteTTS-1.0-1B-FP16.gguf -c 8192 --special --metrics --no-context-shift -ngl 999 --port 8091
-```
-
-I wouldn't touch any of the parameters except `ngl` and whatever else you need to do to get it running on your GPU. The port for this one is hardcoded to 8091 with no API key, because you'll need to use llama.cpp for this one for sure, so just do port 8091.
-
-Note that no API key can be used for this. OuteTTS doesn't seem to know how to pass it, as far as I can tell.
+Voices are one of Supertonic's 10 built-in voices: M1-M5 (male) and F1-F5 (female), which you can specify by command-line arguments (see below).
 
 ### Python setup
 
-Requires Python, `outetts`, `openai`, `torchcodec`, and `pandas` packages, and separately (non-Python) installation of FFmpeg (e.g., `dnf install ffmpeg`, `apt install ffmpeg`).
-
-System packages `python3-devel` and `sdl12-compat-devel` (Fedora names) may be required for `outetts` to successfully install.
+Requires Python and the `supertonic`, `openai`, and `pandas` packages, and separately (non-Python) installation of FFmpeg (e.g., `dnf install ffmpeg`, `apt install ffmpeg`).
 
 ## Usage
 
@@ -42,14 +32,22 @@ See the command-line help:
 python main.py -h
 ```
 
+Example:
+
+```bash
+python main.py pg36.txt out/ --voice1 M5 --voice2 F3 --trans-lang nl --pg
+```
+
+`--voice1` is the voice for the original text, `--voice2` for the translation, and `--trans-lang` is the ISO code of the translation language (e.g., `nl`, `es`). The language of the input text is detected automatically.
+
 ## TODO
 
 Roughly in order of priority:
 
-- [✓] Un-hardcode the LLM API URL and key
-- [✓] Add support for specifying languages instead of hardcoded English/Dutch
-- [✓] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
-- [✓] Figure out what the actual required packages are (I think there were more), including for GPU
+- [x] Un-hardcode the LLM API URL and key
+- [x] Add support for specifying languages instead of hardcoded English/Dutch
+- [x] Track length of individual output chunks to check problems, e.g., when TTS produces a short output like "Nngggg" or "CSCHHHHHH" when it is supposed to actually say something
+- [x] Figure out what the actual required packages are (I think there were more)
 - [ ] Add title/author metadata to audio files
 - [ ] Add chapter break metadata to output
 - [ ] Translation could probably be improved with a better prompt that incorporates the context of the sentence/fragment
