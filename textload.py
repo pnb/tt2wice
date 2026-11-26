@@ -43,6 +43,8 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
     chunks = []
     in_text = False
     for i, para in enumerate(paragraphs):
+        if not in_text and para.startswith("Produced by "):
+            continue  # Don't want to consider this yet as text start
         if (
             not in_text
             and len(para) > 10
@@ -55,7 +57,11 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
         if len(para.strip()) == 0:
             print("Skipping blank paragraph", i + 1)
         elif not in_text:
-            print("Skipping metadata paragraph:", i + 1, para)
+            if "   By " in para and paragraphs[i - 1] == paragraphs[i - 1].upper():
+                chunks.extend(chunk_para(paragraphs[i - 1], maxchars))
+                chunks.extend(chunk_para(para, maxchars))  # Title and author
+            else:
+                print("Skipping metadata paragraph:", i + 1, para)
         else:
             para = re.sub(r"[‘’]", "'", para)
             para = re.sub(r"[“”]", '"', para)
