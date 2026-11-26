@@ -141,9 +141,6 @@ if __name__ == "__main__":
     )
     ap.add_argument("--api-key-translation", help="API key for translation LLM")
     ap.add_argument(
-        "--pg", action="store_true", help="Input is a Project Gutenberg book"
-    )
-    ap.add_argument(
         "--concat-only",
         action="store_true",
         help="Skip the actual TTS part and create an output file from whatever has "
@@ -151,9 +148,6 @@ if __name__ == "__main__":
         "testing)",
     )
     args = ap.parse_args()
-    if not args.pg:
-        print("Only Project Gutenberg books supported for now")
-        exit(1)
     if args.voice1 not in VOICES or args.voice2 not in VOICES:
         ap.error(f"Invalid voice, must be one of {sorted(VOICES)}")
     if args.trans_lang not in LANG_NAMES:
@@ -163,6 +157,9 @@ if __name__ == "__main__":
         exit()
     with open(args.text_file, "r") as infile:
         text = infile.read()
+    if "Project Gutenberg" not in text[:50]:
+        print("Error: Text format not detected (only Project Gutenberg supported)")
+        exit(1)
 
     print("Initializing TTS engine...")
     tts = SupertonicTTS(args.voice1, args.voice2)
