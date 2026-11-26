@@ -40,7 +40,7 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
     start_i = txt.index("\n", start_i) + 1
     end_i = re.search(r"\*\*\* END OF (THE|THIS) PROJECT GUTENBERG", txt).start()
     paragraphs = re.split(r"\n\n+", txt[start_i:end_i])
-    chunks = []
+    chunks = [txt[: txt.index("\n")].strip().replace("\ufeff", "")]  # Title
     in_text = False
     for i, para in enumerate(paragraphs):
         if not in_text and para.startswith("Produced by "):
@@ -49,6 +49,7 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
             not in_text
             and len(para) > 10
             and para == para.lstrip()
+            and not para.startswith("[")
             and (sum(1 for x in para if x == x.lower()) / len(para) > 0.9)
         ):  # Lots of lowercase letters, decent paragraph length -- probably main text
             in_text = True
@@ -57,11 +58,7 @@ def chunk_project_gutenberg(txt: str, maxchars: int = 100, minchars: int = 10) -
         if len(para.strip()) == 0:
             print("Skipping blank paragraph", i + 1)
         elif not in_text:
-            if "   By " in para and paragraphs[i - 1] == paragraphs[i - 1].upper():
-                chunks.extend(chunk_para(paragraphs[i - 1], maxchars))
-                chunks.extend(chunk_para(para, maxchars))  # Title and author
-            else:
-                print("Skipping metadata paragraph:", i + 1, para)
+            print("Skipping metadata paragraph:", i + 1, para)
         else:
             para = re.sub(r"[‘’]", "'", para)
             para = re.sub(r"[“”]", '"', para)
